@@ -129,6 +129,63 @@ typedef void (*irc_event_dcc_chat_t) (irc_session_t * session, const char * nick
  */
 typedef void (*irc_event_dcc_send_t) (irc_session_t * session, const char * nick, const char * addr, const char * filename, unsigned long size, irc_dcc_t dccid);
 
+/*!
+ * \fn typedef void (*irc_log_callback_t) (irc_session_t * session, const char * format, ...)
+ * \brief Logger callback
+ *
+ * \param session the session, which generates an event
+ * \param format  message format for pritnf like functions
+ * \param va_args variadic parameters pack for format
+ *
+ * This callback is called in debug mode when there is a need to print out log message.
+ *
+ * \ingroup events
+ */
+typedef void (*irc_log_callback_t) (irc_session_t * session, const char * format, ...);
+
+/*!
+ * \fn typedef void (*irc_event_connect_t) (irc_session_t * session, const char * event, const char * host)
+ * \brief A connection established callback
+ *
+ * \param session the session, which generates an event
+ * \param event   the text name of the event. Useful in case you use a single 
+ *                event handler for several events simultaneously
+ * \param host    resolved server's IP address
+ *
+ * This callback is called when connection established. It emits before server login.
+ *
+ * \ingroup events
+ */
+typedef void (*irc_event_connect_t) (irc_session_t * session, const char * event, const char * host);
+
+/*!
+ * \fn typedef void (*irc_event_disconnect_t) (irc_session_t * session, const char * event, const char * reason)
+ * \brief A connection disconnected callback
+ *
+ * \param session the session, which generates an event
+ * \param event   the text name of the event. Useful in case you use a single 
+ *                event handler for several events simultaneously
+ * \param reason  the text, which describes disconnection reason
+ *
+ * This callback is called when connection disconnected.
+ *
+ * \ingroup events
+ */
+typedef void (*irc_event_disconnect_t) (irc_session_t * session, const char * event, const char * reason);
+
+/*!
+ * \fn typedef void (*irc_data_callback_t) (irc_session_t * session, const char * data, int size)
+ * \brief Raw data callback to observe data
+ *
+ * \param session the session, which generates an event
+ * \param len    length of incoming or outgoing data
+ *
+ * This callback is called when data sent or received.
+ *
+ * \ingroup events
+ */
+typedef void (*irc_data_callback_t) (irc_session_t * session, int len);
+
 
 /*! \brief Event callbacks structure.
  *
@@ -151,11 +208,41 @@ typedef void (*irc_event_dcc_send_t) (irc_session_t * session, const char * nick
 typedef struct
 {
 	/*!
-	 * The "on_connect" event is triggered when the client successfully 
-	 * connects to the server, and could send commands to the server.
+	 * The "on_log" event is triggered when debug print called
+	 */
+	irc_log_callback_t event_log;
+
+	/*!
+	 * The "on_connect" event is triggered when the socket connects
+	 * to the server, and could send commands to the server.
      * No extra params supplied; \a params is 0.
 	 */
-	irc_event_callback_t	event_connect;
+	irc_event_connect_t    event_connect;
+
+	/*!
+	 * The "on_disconnect" event is triggered when the client disconnects 
+	 * from the server, and could not send commands to the server.
+	 */
+	irc_event_disconnect_t	event_disconnect;
+
+	/*!
+	 * The "on_send" event is triggered when the client sends 
+	 * data to the server.
+	 */
+	irc_data_callback_t	event_send_data;
+
+	/*!
+	 * The "on_recv" event is triggered when the client receives 
+	 * data from the server.
+	 */
+	irc_data_callback_t	event_recv_data;
+
+	/*!
+	 * The "on_login" event is triggered when the client successfully 
+	 * logged in to the server, and could send commands to the server.
+     * No extra params supplied; \a params is 0.
+	 */
+	irc_event_callback_t	event_login;
 
 	/*!
 	 * The "nick" event is triggered when the client receives a NICK message,
@@ -384,6 +471,5 @@ typedef struct
 
 
 } irc_callbacks_t;
-
 
 #endif /* INCLUDE_IRC_EVENTS_H */

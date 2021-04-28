@@ -26,6 +26,9 @@
 #include "dcc.c"
 #include "ssl.c"
 
+#define LIBIRC_SEND_ERR 1
+#define LIBIRC_RECV_BUFF 2*1024
+#define LIBIRC_MAX_PARAMS 10
 
 #ifdef _MSC_VER
 	/*
@@ -73,7 +76,7 @@ irc_session_t * irc_create_session (irc_callbacks_t	* callbacks)
 	|| libirc_mutex_init (&session->mutex_dcc) )
 	{
 		free (session);
-		return 0;
+		return NULL;
 	}
 
 	session->dcc_last_id = 1;
@@ -83,7 +86,7 @@ irc_session_t * irc_create_session (irc_callbacks_t	* callbacks)
 
 	if ( !session->callbacks.event_ctcp_req )
 		session->callbacks.event_ctcp_req = libirc_event_ctcp_internal;
-
+	
 	return session;
 }
 
@@ -190,6 +193,7 @@ int irc_connect (irc_session_t * session,
 	
 	if ( username )
 		session->username = strdup (username);
+	
 
 	if ( server_password )
 		session->server_password = strdup (server_password);
@@ -199,6 +203,13 @@ int irc_connect (irc_session_t * session,
 
 	session->nick = strdup (nick);
 	session->server = strdup (server);
+
+#if defined (ENABLE_DEBUG)
+		if ( IS_DEBUG_ENABLED(session) ) {
+			session->callbacks.event_log(session, "Session credentials: %s %s %s to %s\n",
+				session->username, session->server_password, session->nick, session->server);
+		}
+#endif
 
 	// If port number is zero and server contains the port, parse it
 	if ( port == 0 && (p = strchr( session->server, ':' )) != 0 )
@@ -265,8 +276,13 @@ int irc_connect (irc_session_t * session,
 		return 1;
     }
 
+#if defined (ENABLE_DEBUG)
+		if ( IS_DEBUG_ENABLED(session) )
+			session->callbacks.event_log(session, "Session change state to Connecting\n");
+#endif
+
     session->state = LIBIRC_STATE_CONNECTING;
-    session->flags = SESSIONFL_USES_IPV6; // reset in case of reconnect
+    session->flags = 0; // reset in case of reconnect
 	return 0;
 }
 
@@ -510,7 +526,6 @@ int irc_add_select_descriptors (irc_session_t * session, fd_set *in_set, fd_set 
 		if ( libirc_findcrlf (session->outgoing_buf, session->outgoing_offset) > 0
 		|| (session->flags & SESSIONFL_SSL_READ_WANTS_WRITE) != 0 )
 			libirc_add_to_set (session->sock, out_set, maxfd);
-
 		break;
 	}
 
@@ -523,9 +538,8 @@ int irc_add_select_descriptors (irc_session_t * session, fd_set *in_set, fd_set 
 
 static void libirc_process_incoming_data (irc_session_t * session, size_t process_length)
 {
-	#define MAX_PARAMS_ALLOWED 10
-	char buf[2*512], *p, *s;
-	const char * command = 0, *prefix = 0, *params[MAX_PARAMS_ALLOWED+1];
+	char buf[LIBIRC_RECV_BUFF], *p, *s;
+	const char * command = 0, *prefix = 0, *params[LIBIRC_MAX_PARAMS+1];
 	int code = 0, paramindex = 0;
     char *buf_end = buf + process_length;
 
@@ -597,7 +611,7 @@ static void libirc_process_incoming_data (irc_session_t * session, size_t proces
 	}
 
 	// Parse middle/params
-	while ( *p &&  paramindex < MAX_PARAMS_ALLOWED )
+	while ( *p &&  paramindex < LIBIRC_MAX_PARAMS )
 	{
 		// beginning from ':', this is the last param
 		if ( *p == ':' )
@@ -634,8 +648,8 @@ static void libirc_process_incoming_data (irc_session_t * session, size_t proces
 		{
 			session->flags |= SESSIONFL_MOTD_RECEIVED;
 
-			if ( session->callbacks.event_connect )
-				(*session->callbacks.event_connect) (session, "CONNECT", prefix, params, paramindex);
+			if ( session->callbacks.event_login )
+				(*session->callbacks.event_login) (session, "LOGIN", prefix, params, paramindex);
 		}
 
 		if ( session->callbacks.event_numeric )
@@ -843,9 +857,17 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 		if ( getsockname (session->sock, (struct sockaddr*)&laddr, &llen) < 0
 		|| getpeername (session->sock, (struct sockaddr*)&saddr, &slen) < 0 )
 		{
+#if defined (ENABLE_DEBUG)
+		if ( IS_DEBUG_ENABLED(session) )
+			session->callbacks.event_log(session, "Session change state to Disconnected\n");
+#endif
 			// connection failed
 			session->lasterror = LIBIRC_ERR_CONNECT;
 			session->state = LIBIRC_STATE_DISCONNECTED;
+
+			if ( session->callbacks.event_disconnect )
+				(*session->callbacks.event_disconnect) (session, "DISCONNECT", "Failed to connect to server");
+
 			return 1;
 		}
 
@@ -856,14 +878,23 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 
 #if defined (ENABLE_DEBUG)
 		if ( IS_DEBUG_ENABLED(session) )
-			fprintf (stderr, "[DEBUG] Detected local address: %s\n", inet_ntoa(session->local_addr));
+			session->callbacks.event_log(session, "Session change state to Connected\n");
 #endif
-
 		session->state = LIBIRC_STATE_CONNECTED;
+
+		
+		if ( session->callbacks.event_connect )
+			(*session->callbacks.event_connect) (session, "CONNECT", inet_ntoa(session->local_addr));
 
 		// Get the hostname
     	if ( gethostname (hname, sizeof(hname)) < 0 )
     		strcpy (hname, "unknown");
+
+
+#if defined (ENABLE_DEBUG)
+		if ( IS_DEBUG_ENABLED(session) )
+			session->callbacks.event_log(session, "Detected local address: %s\n", inet_ntoa(session->local_addr));
+#endif
 
 		// Prepare the data, which should be sent to the server
 		if ( session->server_password )
@@ -905,7 +936,13 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 			if ( session->lasterror == 0 )
 				session->lasterror = (length == 0 ? LIBIRC_ERR_CLOSED : LIBIRC_ERR_TERMINATED);
 			
+#if defined (ENABLE_DEBUG)
+			if ( IS_DEBUG_ENABLED(session) )
+				session->callbacks.event_log(session, "Session change state to Disconnected\n");
+#endif
 			session->state = LIBIRC_STATE_DISCONNECTED;
+			if ( session->callbacks.event_disconnect )
+				(*session->callbacks.event_disconnect) (session, "DISCONNECT", "Failed to read from socket");
 			return 1;
 		}
 
@@ -916,7 +953,7 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 		{
 #if defined (ENABLE_DEBUG)
 			if ( IS_DEBUG_ENABLED(session) )
-				libirc_dump_data ("RECV", session->incoming_buf, offset);
+				session->callbacks.event_log(session, "RECV %.*s\n", offset, session->incoming_buf);
 #endif
 			// parse the string
 			libirc_process_incoming_data (session, offset);
@@ -928,6 +965,9 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 
 			session->incoming_offset -= offset;
 		}
+		
+		if ( session->callbacks.event_recv_data )
+				(*session->callbacks.event_recv_data) (session, length);
 	}
 
 	// We can write a stored buffer
@@ -944,15 +984,22 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 			if ( session->lasterror == 0 )
 				session->lasterror = (length == 0 ? LIBIRC_ERR_CLOSED : LIBIRC_ERR_TERMINATED);
 
+#if defined (ENABLE_DEBUG)
+			if ( IS_DEBUG_ENABLED(session) )
+				session->callbacks.event_log(session, "Session change state to Disconnected\n");
+#endif
 			session->state = LIBIRC_STATE_DISCONNECTED;
-
 			libirc_mutex_unlock (&session->mutex_session);
+
+			if ( session->callbacks.event_disconnect )
+				(*session->callbacks.event_disconnect) (session, "DISCONNECT", "Failed to write from socket");
+			
 			return 1;
 		}
 
 #if defined (ENABLE_DEBUG)
 		if ( IS_DEBUG_ENABLED(session) )
-			libirc_dump_data ("SEND", session->outgoing_buf, length);
+			session->callbacks.event_log(session, "SEND %.*s\n", length, session->outgoing_buf);
 #endif
 
 		if ( length > 0 && session->outgoing_offset - length > 0 )
@@ -960,6 +1007,9 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 
 		session->outgoing_offset -= length;
 		libirc_mutex_unlock (&session->mutex_session);
+
+		if ( session->callbacks.event_send_data )
+				(*session->callbacks.event_send_data) (session, length);
 	}
 
 	return 0;
@@ -974,7 +1024,7 @@ int irc_send_raw (irc_session_t * session, const char * format, ...)
 	if ( session->state != LIBIRC_STATE_CONNECTED )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	va_start (va_alist, format);
@@ -983,15 +1033,16 @@ int irc_send_raw (irc_session_t * session, const char * format, ...)
 
 	libirc_mutex_lock (&session->mutex_session);
 
-	if ( (strlen(buf) + 2) >= (sizeof(session->outgoing_buf) - session->outgoing_offset) )
+	int len = strlen (buf);
+	if ( (len + 2) >= (sizeof(session->outgoing_buf) - session->outgoing_offset) )
 	{
 		libirc_mutex_unlock (&session->mutex_session);
 		session->lasterror = LIBIRC_ERR_NOMEM;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	strcpy (session->outgoing_buf + session->outgoing_offset, buf);
-	session->outgoing_offset += strlen (buf);
+	session->outgoing_offset += len;
 	session->outgoing_buf[session->outgoing_offset++] = 0x0D;
 	session->outgoing_buf[session->outgoing_offset++] = 0x0A;
 
@@ -1011,7 +1062,7 @@ int irc_cmd_join (irc_session_t * session, const char * channel, const char * ke
 	if ( !channel )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	if ( key )
@@ -1026,7 +1077,7 @@ int irc_cmd_part (irc_session_t * session, const char * channel)
 	if ( !channel )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "PART %s", channel);
@@ -1038,7 +1089,7 @@ int irc_cmd_topic (irc_session_t * session, const char * channel, const char * t
 	if ( !channel )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	if ( topic )
@@ -1052,7 +1103,7 @@ int irc_cmd_names (irc_session_t * session, const char * channel)
 	if ( !channel )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "NAMES %s", channel);
@@ -1073,7 +1124,7 @@ int irc_cmd_invite (irc_session_t * session, const char * nick, const char * cha
 	if ( !channel || !nick )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "INVITE %s %s", nick, channel);
@@ -1085,7 +1136,7 @@ int irc_cmd_kick (irc_session_t * session, const char * nick, const char * chann
 	if ( !channel || !nick )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	if ( comment )
@@ -1100,7 +1151,7 @@ int irc_cmd_msg (irc_session_t * session, const char * nch, const char * text)
 	if ( !nch || !text )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "PRIVMSG %s :%s", nch, text);
@@ -1112,7 +1163,7 @@ int irc_cmd_notice (irc_session_t * session, const char * nch, const char * text
 	if ( !nch || !text )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "NOTICE %s :%s", nch, text);
@@ -1159,7 +1210,7 @@ int irc_cmd_ctcp_request (irc_session_t * session, const char * nick, const char
 	if ( !nick || !reply )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "PRIVMSG %s :\x01%s\x01", nick, reply);
@@ -1171,7 +1222,7 @@ int irc_cmd_ctcp_reply (irc_session_t * session, const char * nick, const char *
 	if ( !nick || !reply )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "NOTICE %s :\x01%s\x01", nick, reply);
@@ -1195,7 +1246,6 @@ void * irc_get_ctx (irc_session_t * session)
 {
 	return session->ctx;
 }
-
 
 void irc_set_ctcp_version (irc_session_t * session, const char * version)
 {
@@ -1221,7 +1271,7 @@ int irc_cmd_me (irc_session_t * session, const char * nch, const char * text)
 	if ( !nch || !text )
 	{
 		session->lasterror = LIBIRC_ERR_STATE;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "PRIVMSG %s :\x01" "ACTION %s\x01", nch, text);
@@ -1245,7 +1295,7 @@ int irc_cmd_channel_mode (irc_session_t * session, const char * channel, const c
 	if ( !channel )
 	{
 		session->lasterror = LIBIRC_ERR_INVAL;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	if ( mode )
@@ -1269,7 +1319,7 @@ int irc_cmd_nick (irc_session_t * session, const char * newnick)
 	if ( !newnick )
 	{
 		session->lasterror = LIBIRC_ERR_INVAL;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "NICK %s", newnick);
@@ -1280,7 +1330,7 @@ int irc_cmd_whois (irc_session_t * session, const char * nick)
 	if ( !nick )
 	{
 		session->lasterror = LIBIRC_ERR_INVAL;
-		return 1;
+		return LIBIRC_SEND_ERR;
 	}
 
 	return irc_send_raw (session, "WHOIS %s %s", nick, nick);
