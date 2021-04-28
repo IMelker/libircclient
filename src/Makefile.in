@@ -24,14 +24,17 @@ install:
 	cp ../include/libirc_events.h  $(DESTDIR)@prefix@/include/libirc_events.h 
 	cp ../include/libirc_options.h  $(DESTDIR)@prefix@/include/libirc_options.h 
 	cp ../include/libirc_rfcnumeric.h  $(DESTDIR)@prefix@/include/libirc_rfcnumeric.h
-	if [ -f "libircclient.so" ]; then
-		cp libircclient.so $(DESTDIR)@libdir@/libircclient.so.$(APIVERSION)
-		ln -fs libircclient.so.$(APIVERSION) $(DESTDIR)@libdir@/libircclient.so
-	fi
-	if [ -f "libircclient.a" ]; then
-		cp libircclient.a $(DESTDIR)@libdir@/libircclient.a.$(APIVERSION)
-		ln -fs libircclient.a.$(APIVERSION) $(DESTDIR)@libdir@/libircclient.a
-	fi
+ifneq (,$(wildcard ./libircclient.a))
+	cp libircclient.a $(DESTDIR)@libdir@/libircclient.a.$(APIVERSION)
+	ln -fs libircclient.a.$(APIVERSION) $(DESTDIR)@libdir@/libircclient.a
+endif
+ifneq (,$(wildcard ./libircclient.so))
+	cp libircclient.so $(DESTDIR)@libdir@/libircclient.so.$(APIVERSION)
+	ln -fs libircclient.so.$(APIVERSION) $(DESTDIR)@libdir@/libircclient.so
+endif
+ifneq (,$(wildcard ./libircclient.dll))
+	cp libircclient.dll $(DESTDIR)@libdir@/libircclient.dll
+endif
 
 libircclient.so: libircclient.o
 	$(CC) -shared -s -Wl,-soname,libircclient.so.$(APIVERSION) -o libircclient.so libircclient.o @LDFLAGS@ @LIBS@

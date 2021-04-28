@@ -62,7 +62,7 @@ void dcc_callback (irc_session_t * session, irc_dcc_t id, int status, void * ctx
 }
 
 
-void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+void event_login (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
 	irc_cmd_join (session, ctx->channel.c_str(), 0);
@@ -140,7 +140,7 @@ int main (int argc, char **argv)
 	memset (&callbacks, 0, sizeof(callbacks));
 
 	// Set up the callbacks we will use
-	callbacks.event_connect = event_connect;
+	callbacks.event_login = event_login;
 	callbacks.event_privmsg = event_privmsg;
 	callbacks.event_numeric = event_numeric;
 

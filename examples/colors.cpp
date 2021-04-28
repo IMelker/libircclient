@@ -43,7 +43,7 @@ void event_join (irc_session_t * session, const char * event, const char * origi
 }
 
 
-void event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
+void event_login (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
 	irc_ctx_t * ctx = (irc_ctx_t *) irc_get_ctx (session);
 	irc_cmd_join (session, ctx->channel, 0);
@@ -114,7 +114,7 @@ int main (int argc, char **argv)
 
 	memset (&callbacks, 0, sizeof(callbacks));
 
-	callbacks.event_connect = event_connect;
+	callbacks.event_login = event_login;
 	callbacks.event_join = event_join;
 	callbacks.event_channel = event_channel;
 	callbacks.event_numeric = event_numeric;
