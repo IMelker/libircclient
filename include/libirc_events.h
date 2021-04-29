@@ -438,6 +438,15 @@ typedef struct
 	irc_event_callback_t	event_ctcp_action;
 
 	/*!
+	 * The "pong" event is triggered when the client receives pong
+	 * response for our ping.
+     *
+	 * \param event event name
+	 * \param host host received from pong
+	 */
+	irc_event_connect_t		event_pong;
+
+	/*!
 	 * The "unknown" event is triggered upon receipt of any number of 
 	 * unclassifiable miscellaneous messages, which aren't handled by the
      * library.
