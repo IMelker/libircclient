@@ -633,10 +633,14 @@ static void libirc_process_incoming_data (irc_session_t * session, size_t proces
 	}
 
 	// Handle PING/PONG
-	if ( command && !strncmp (command, "PING", buf_end - command) && params[0] )
-	{
-		irc_send_raw (session, "PONG %s", params[0]);
-		return;
+	if ( command ) {
+		if ( !strncmp (command, "PONG", buf_end - command) && params[0] ) {
+			return;
+		}
+		if ( !strncmp (command, "PING", buf_end - command) && params[0] ) {
+			irc_send_raw (session, "PONG %s", params[0]);
+			return;
+		}
 	}
 
 	// and dump
@@ -1050,6 +1054,10 @@ int irc_send_raw (irc_session_t * session, const char * format, ...)
 	return 0;
 }
 
+int irc_cmd_ping (irc_session_t * session, const char * host)
+{
+	return irc_send_raw (session, "PING :%s", host);
+}
 
 int irc_cmd_quit (irc_session_t * session, const char * reason)
 {
