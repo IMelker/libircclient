@@ -687,6 +687,7 @@ enable_shared
 enable_threads
 enable_ipv6
 enable_openssl
+enable_twitch
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1314,6 +1315,7 @@ Optional Features:
   --enable-threads        compile with multithread support (yes)
   --enable-ipv6           compile with IPv6 support (no)
   --enable-openssl        compile with OpenSSL support (no)
+  --enable-twitch         compile with twitch sharp prefix(no)
 
 Some influential environment variables:
   CXX         C++ compiler command
@@ -2244,6 +2246,13 @@ if test "${enable_openssl+set}" = set; then :
   enableval=$enable_openssl; use_openssl=$enableval
 else
   use_openssl=no
+fi
+
+# Check whether --enable-openssl was given.
+if test "${enable_twitch+set}" = set; then :
+  enableval=$enable_twitch; use_twitch=$enableval
+else
+  use_twitch=no
 fi
 
 

@@ -30,6 +30,12 @@
 #define LIBIRC_RECV_BUFF 2*1024
 #define LIBIRC_MAX_PARAMS 10
 
+#if defined (ENABLE_TWITCH)
+#define CHANNEL_PREFIX "#"
+#else
+#define CHANNEL_PREFIX ""
+#endif
+
 #ifdef _MSC_VER
 	/*
 	 * The debugger of MSVC 2005 does not like strdup.
@@ -1076,9 +1082,9 @@ int irc_cmd_join (irc_session_t * session, const char * channel, const char * ke
 	}
 
 	if ( key )
-		return irc_send_raw (session, "JOIN %s :%s", channel, key);
+		return irc_send_raw (session, "JOIN " CHANNEL_PREFIX "%s :%s", channel, key);
 	else
-		return irc_send_raw (session, "JOIN %s", channel);
+		return irc_send_raw (session, "JOIN " CHANNEL_PREFIX "%s", channel);
 }
 
 
@@ -1090,7 +1096,7 @@ int irc_cmd_part (irc_session_t * session, const char * channel)
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "PART %s", channel);
+	return irc_send_raw (session, "PART " CHANNEL_PREFIX "%s", channel);
 }
 
 
@@ -1103,9 +1109,9 @@ int irc_cmd_topic (irc_session_t * session, const char * channel, const char * t
 	}
 
 	if ( topic )
-		return irc_send_raw (session, "TOPIC %s :%s", channel, topic);
+		return irc_send_raw (session, "TOPIC " CHANNEL_PREFIX "%s :%s", channel, topic);
 	else
-		return irc_send_raw (session, "TOPIC %s", channel);
+		return irc_send_raw (session, "TOPIC " CHANNEL_PREFIX "%s", channel);
 }
 
 int irc_cmd_names (irc_session_t * session, const char * channel)
@@ -1116,14 +1122,14 @@ int irc_cmd_names (irc_session_t * session, const char * channel)
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "NAMES %s", channel);
+	return irc_send_raw (session, "NAMES " CHANNEL_PREFIX "%s", channel);
 }
 
 
 int irc_cmd_list (irc_session_t * session, const char * channel)
 {
 	if ( channel )
-		return irc_send_raw (session, "LIST %s", channel);
+		return irc_send_raw (session, "LIST " CHANNEL_PREFIX "%s", channel);
 	else
 		return irc_send_raw (session, "LIST");
 }
@@ -1137,7 +1143,7 @@ int irc_cmd_invite (irc_session_t * session, const char * nick, const char * cha
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "INVITE %s %s", nick, channel);
+	return irc_send_raw (session, "INVITE %s " CHANNEL_PREFIX "%s", nick, channel);
 }
 
 
@@ -1150,9 +1156,9 @@ int irc_cmd_kick (irc_session_t * session, const char * nick, const char * chann
 	}
 
 	if ( comment )
-		return irc_send_raw (session, "KICK %s %s :%s", channel, nick, comment);
+		return irc_send_raw (session, "KICK " CHANNEL_PREFIX "%s %s :%s", channel, nick, comment);
 	else
-		return irc_send_raw (session, "KICK %s %s", channel, nick);
+		return irc_send_raw (session, "KICK " CHANNEL_PREFIX "%s %s", channel, nick);
 }
 
 
@@ -1164,7 +1170,7 @@ int irc_cmd_msg (irc_session_t * session, const char * nch, const char * text)
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "PRIVMSG %s :%s", nch, text);
+	return irc_send_raw (session, "PRIVMSG " CHANNEL_PREFIX "%s :%s", nch, text);
 }
 
 
@@ -1176,7 +1182,7 @@ int irc_cmd_notice (irc_session_t * session, const char * nch, const char * text
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "NOTICE %s :%s", nch, text);
+	return irc_send_raw (session, "NOTICE " CHANNEL_PREFIX "%s :%s", nch, text);
 }
 
 void irc_target_get_nick (const char * target, char *nick, size_t size)
@@ -1284,7 +1290,7 @@ int irc_cmd_me (irc_session_t * session, const char * nch, const char * text)
 		return LIBIRC_SEND_ERR;
 	}
 
-	return irc_send_raw (session, "PRIVMSG %s :\x01" "ACTION %s\x01", nch, text);
+	return irc_send_raw (session, "PRIVMSG " CHANNEL_PREFIX "%s :\x01" "ACTION %s\x01", nch, text);
 }
 
 
@@ -1309,9 +1315,9 @@ int irc_cmd_channel_mode (irc_session_t * session, const char * channel, const c
 	}
 
 	if ( mode )
-		return irc_send_raw (session, "MODE %s %s", channel, mode);
+		return irc_send_raw (session, "MODE " CHANNEL_PREFIX "%s %s", channel, mode);
 	else
-		return irc_send_raw (session, "MODE %s", channel);
+		return irc_send_raw (session, "MODE " CHANNEL_PREFIX "%s", channel);
 }
 
 

@@ -37,6 +37,12 @@ AC_ARG_ENABLE([openssl],
             [use_openssl=$enableval],
             [use_openssl=no])
 
+AC_ARG_ENABLE([twitch],
+            [AS_HELP_STRING([--enable-twitch],
+               [compile with twitch sharp prefix(no)])],
+            [use_twitch=$enableval],
+            [use_twitch=no])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -104,6 +110,10 @@ if test "$use_openssl" = "yes"; then
 	AC_CHECK_LIB(ssl,    [SSL_CTX_new], [], [AC_MSG_ERROR([OpenSSL not found (libssl)])])
 	AC_CHECK_HEADER([openssl/ssl.h], [], [AC_MSG_ERROR([OpenSSL headers not found; did you install the -dev package?])])
 	CFLAGS="$CFLAGS -DENABLE_SSL"
+fi
+
+if test "$use_twitch" = "yes"; then
+	CFLAGS="${CFLAGS} -DENABLE_TWITCH"
 fi
 
 AC_SUBST(TARGET)
