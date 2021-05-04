@@ -30,12 +30,6 @@
 #define LIBIRC_RECV_BUFF 2*1024
 #define LIBIRC_MAX_PARAMS 10
 
-#if defined (ENABLE_TWITCH)
-#define CHANNEL_PREFIX "#"
-#else
-#define CHANNEL_PREFIX ""
-#endif
-
 #ifdef _MSC_VER
 	/*
 	 * The debugger of MSVC 2005 does not like strdup.
@@ -48,6 +42,12 @@
 
 #if defined (WIN32_DLL)
 static int winsock_refcount = 0;
+#endif
+
+#if defined (ENABLE_TWITCH)
+#define CHANNEL_PREFIX "#"
+#else
+#define CHANNEL_PREFIX ""
 #endif
 
 irc_session_t * irc_create_session (irc_callbacks_t	* callbacks)
@@ -965,7 +965,7 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 		{
 #if defined (ENABLE_DEBUG)
 			if ( IS_DEBUG_ENABLED(session) )
-				session->callbacks.event_log(session, "RECV %.*s\n", offset, session->incoming_buf);
+				libirc_dump_data ("RECV", session->incoming_buf, offset);
 #endif
 			// parse the string
 			libirc_process_incoming_data (session, offset);
@@ -1011,7 +1011,7 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 
 #if defined (ENABLE_DEBUG)
 		if ( IS_DEBUG_ENABLED(session) )
-			session->callbacks.event_log(session, "SEND %.*s\n", length, session->outgoing_buf);
+			libirc_dump_data ("SEND", session->outgoing_buf, length);
 #endif
 
 		if ( length > 0 && session->outgoing_offset - length > 0 )

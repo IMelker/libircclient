@@ -4544,6 +4544,10 @@ if test "$use_threads" = "yes"; then
 	CFLAGS="$CFLAGS -DENABLE_THREADS -D_REENTRANT"
 fi
 
+if test "$use_twitch" = "yes"; then
+   CFLAGS="$CFLAGS -DENABLE_TWITCH"
+fi
+
 
 # Checking for mingw
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking For MinGW32" >&5

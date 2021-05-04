@@ -26,6 +26,7 @@ static void libirc_dump_data (const char * prefix, const char * buf, unsigned in
 	printf ("%s: ", prefix);
 	for ( ; length > 0; length -- )
 		printf ("%c", *buf++);
+	printf("\n");
 }
 #endif
 

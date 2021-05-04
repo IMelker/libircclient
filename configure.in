@@ -113,7 +113,7 @@ if test "$use_openssl" = "yes"; then
 fi
 
 if test "$use_twitch" = "yes"; then
-	CFLAGS="${CFLAGS} -DENABLE_TWITCH"
+   CFLAGS="$CFLAGS -DENABLE_TWITCH"
 fi
 
 AC_SUBST(TARGET)
