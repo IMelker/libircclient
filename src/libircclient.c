@@ -289,6 +289,7 @@ int irc_connect (irc_session_t * session,
 
     session->state = LIBIRC_STATE_CONNECTING;
     session->flags = 0; // reset in case of reconnect
+	session->incoming_offset = 0;
 	return 0;
 }
 
@@ -1004,7 +1005,7 @@ int irc_process_select_descriptors (irc_session_t * session, fd_set *in_set, fd_
 			libirc_mutex_unlock (&session->mutex_session);
 
 			if ( session->callbacks.event_disconnect )
-				(*session->callbacks.event_disconnect) (session, "DISCONNECT", "Failed to write from socket");
+				(*session->callbacks.event_disconnect) (session, "DISCONNECT", "Failed to write to socket");
 			
 			return 1;
 		}
