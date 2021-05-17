@@ -26,10 +26,6 @@
 #include "dcc.c"
 #include "ssl.c"
 
-#define LIBIRC_SEND_ERR 1
-#define LIBIRC_RECV_BUFF 2*1024
-#define LIBIRC_MAX_PARAMS 10
-
 #ifdef _MSC_VER
 	/*
 	 * The debugger of MSVC 2005 does not like strdup.
