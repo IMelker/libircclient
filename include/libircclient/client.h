@@ -13,13 +13,13 @@
  */
 
 /*! 
- * \file libircclient.h
+ * \file client.h
  * \author George Yunaev
  * \version 1.9
  * \date 01.2012
  * \brief This file defines all prototypes and functions to use libircclient.
  *
- * libircclient is a small but powerful library, which implements client-server IRC
+ * client is a small but powerful library, which implements client-server IRC
  * protocol. It is designed to be small, fast, portable and compatible to RFC
  * standards, and most IRC clients. libircclient features include:
  * - Full multi-threading support.

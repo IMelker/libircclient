@@ -12,6 +12,7 @@
  * License for more details.
  */
 
+#include "client.h"
 
 #if defined (ENABLE_SSL)
 
